@@ -144,6 +144,35 @@
                 <h2 class="text-2xl font-bold mb-4">Настройки</h2>
                 <p>Будет добавлено...</p>
             </div>
+            <div id="calendar-view" class="view-container hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">📅 Календарь</h2>
+                    <p class="text-gray-600">Планирование событий и задач по дням</p>
+                </div>
+
+                <div class="max-w-5xl mx-auto">
+                    <!-- Навигация по месяцам -->
+                    <div class="flex justify-center items-center mb-6">
+                        <button id="prev-month" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg">← Предыдущий</button>
+                        <h3 id="current-month" class="text-xl font-bold mx-6"></h3>
+                        <button id="next-month" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg">Следующий →</button>
+                    </div>
+
+                    <!-- Сетка календаря -->
+                    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                        <div class="grid grid-cols-7 bg-gray-50 border-b">
+                            <div class="p-4 text-center font-bold text-gray-700">Пн</div>
+                            <div class="p-4 text-center font-bold text-gray-700">Вт</div>
+                            <div class="p-4 text-center font-bold text-gray-700">Ср</div>
+                            <div class="p-4 text-center font-bold text-gray-700">Чт</div>
+                            <div class="p-4 text-center font-bold text-gray-700">Пт</div>
+                            <div class="p-4 text-center font-bold text-gray-700">Сб</div>
+                            <div class="p-4 text-center font-bold text-gray-700">Вс</div>
+                        </div>
+                        <div id="calendar-days" class="grid grid-cols-7"></div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
