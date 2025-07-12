@@ -99,6 +99,9 @@ function showView(viewName) {
         case 'settings':
             renderSettingsView();
             break;
+        case 'calendar':
+            initCalendar();
+            break;
     }
 }
 
