@@ -354,8 +354,615 @@ function filterChaos(filterType) {
 // ============================================
 // ЗАГЛУШКИ ДЛЯ БУДУЩИХ ФУНКЦИЙ
 // ============================================
+// ============================================
+// СТРАТЕГИЧЕСКОЕ ПЛАНИРОВАНИЕ
+// ============================================
 function renderStrategicView() {
-    console.log('📊 Стратегическое планирование (в разработке)');
+    const strategicView = document.getElementById('strategic-view');
+    if (!strategicView) return;
+    
+    // Инициализируем данные если их нет
+    if (!appData.yearlyGoals) appData.yearlyGoals = {};
+    if (!appData.quarterlyTasks) appData.quarterlyTasks = {};
+    
+    strategicView.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Годовое планирование -->
+            <div class="bg-white rounded-lg p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-purple-700">
+                        <i class="fas fa-calendar-alt"></i> Годовые цели 2025
+                    </h2>
+                    <button onclick="showAddGoalModal()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                        <i class="fas fa-plus"></i> Добавить цель
+                    </button>
+                </div>
+                
+                <div id="yearly-goals-list" class="space-y-4">
+                    <!-- Цели будут загружены сюда -->
+                </div>
+                
+                ${Object.keys(appData.yearlyGoals).length === 0 ? `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-bullseye text-4xl mb-4"></i>
+                        <p>Добавьте первую годовую цель!</p>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <!-- Квартальное планирование -->
+            <div class="bg-white rounded-lg p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-blue-700">
+                        <i class="fas fa-tasks"></i> Квартальные задачи
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <select id="quarter-selector" onchange="loadQuarter()" class="p-2 border rounded">
+                            <option value="1" ${appData.currentQuarter === 1 ? 'selected' : ''}>Q1 2025</option>
+                            <option value="2" ${appData.currentQuarter === 2 ? 'selected' : ''}>Q2 2025</option>
+                            <option value="3" ${appData.currentQuarter === 3 ? 'selected' : ''}>Q3 2025</option>
+                            <option value="4" ${appData.currentQuarter === 4 ? 'selected' : ''}>Q4 2025</option>
+                        </select>
+                        <button onclick="reviewQuarter()" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700">
+                            <i class="fas fa-clipboard-check"></i> Пересмотр
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <button onclick="showAddQuarterlyTaskModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </button>
+                </div>
+                
+                <div id="quarterly-tasks-list" class="space-y-3">
+                    <!-- Квартальные задачи будут загружены сюда -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- История пересмотров -->
+        <div class="mt-6 bg-white rounded-lg p-6 shadow-lg">
+            <h2 class="text-2xl font-bold text-green-700 mb-4">
+                <i class="fas fa-history"></i> История пересмотров
+            </h2>
+            <div id="reviews-history" class="space-y-2">
+                <!-- История будет загружена сюда -->
+            </div>
+        </div>
+    `;
+    
+    renderYearlyGoals();
+    renderQuarterlyTasks();
+    renderReviewsHistory();
+}
+
+// ============================================
+// ГОДОВЫЕ ЦЕЛИ
+// ============================================
+function renderYearlyGoals() {
+    const container = document.getElementById('yearly-goals-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    appData.categories.forEach(category => {
+        const goals = appData.yearlyGoals[category] || [];
+        
+        if (goals.length > 0) {
+            const categoryBlock = document.createElement('div');
+            categoryBlock.className = 'border-l-4 border-purple-400 pl-4 py-2';
+            
+            categoryBlock.innerHTML = `
+                <h3 class="font-bold text-purple-700 mb-2">${category}</h3>
+                <div class="space-y-2">
+                    ${goals.map(goal => `
+                        <div class="bg-purple-50 p-3 rounded border">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <p class="font-medium">${goal.title}</p>
+                                    ${goal.description ? `<p class="text-sm text-gray-600 mt-1">${goal.description}</p>` : ''}
+                                </div>
+                                <div class="flex items-center gap-2 ml-2">
+                                    <button onclick="editYearlyGoal('${category}', ${goal.id})" class="text-blue-500 hover:text-blue-700">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteYearlyGoal('${category}', ${goal.id})" class="text-red-500 hover:text-red-700">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            container.appendChild(categoryBlock);
+        }
+    });
+}
+
+function showAddGoalModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.id = 'goal-modal';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4">Добавить годовую цель</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Категория</label>
+                    <select id="goal-category" class="w-full p-2 border rounded">
+                        ${appData.categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Цель</label>
+                    <input type="text" id="goal-title" placeholder="Что хотите достичь?" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Описание (необязательно)</label>
+                    <textarea id="goal-description" placeholder="Подробности..." class="w-full p-2 border rounded" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="closeModal('goal-modal')" class="px-4 py-2 border rounded hover:bg-gray-50">
+                    Отмена
+                </button>
+                <button onclick="addYearlyGoal()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                    Добавить
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function addYearlyGoal() {
+    const category = document.getElementById('goal-category').value;
+    const title = document.getElementById('goal-title').value.trim();
+    const description = document.getElementById('goal-description').value.trim();
+    
+    if (!title) {
+        alert('⚠️ Введите название цели!');
+        return;
+    }
+    
+    if (!appData.yearlyGoals[category]) {
+        appData.yearlyGoals[category] = [];
+    }
+    
+    const newGoal = {
+        id: Date.now(),
+        title: title,
+        description: description,
+        createdAt: new Date().toISOString()
+    };
+    
+    appData.yearlyGoals[category].push(newGoal);
+    saveData();
+    
+    closeModal('goal-modal');
+    renderYearlyGoals();
+    
+    console.log('🎯 Годовая цель добавлена:', title);
+}
+
+function editYearlyGoal(category, goalId) {
+    const goals = appData.yearlyGoals[category] || [];
+    const goal = goals.find(g => g.id === goalId);
+    
+    if (!goal) return;
+    
+    const newTitle = prompt('Изменить цель:', goal.title);
+    if (newTitle && newTitle.trim()) {
+        goal.title = newTitle.trim();
+        saveData();
+        renderYearlyGoals();
+    }
+}
+
+function deleteYearlyGoal(category, goalId) {
+    if (!confirm('Удалить годовую цель?')) return;
+    
+    if (appData.yearlyGoals[category]) {
+        appData.yearlyGoals[category] = appData.yearlyGoals[category].filter(g => g.id !== goalId);
+        saveData();
+        renderYearlyGoals();
+    }
+}
+
+// ============================================
+// КВАРТАЛЬНЫЕ ЗАДАЧИ
+// ============================================
+function renderQuarterlyTasks() {
+    const container = document.getElementById('quarterly-tasks-list');
+    if (!container) return;
+    
+    const currentQuarter = appData.currentQuarter;
+    const quarterKey = `q${currentQuarter}_2025`;
+    
+    if (!appData.quarterlyTasks[quarterKey]) {
+        appData.quarterlyTasks[quarterKey] = [];
+    }
+    
+    const tasks = appData.quarterlyTasks[quarterKey];
+    container.innerHTML = '';
+    
+    if (tasks.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-clipboard-list text-4xl mb-4"></i>
+                <p>Нет задач на этот квартал</p>
+            </div>
+        `;
+        return;
+    }
+    
+    tasks.forEach(task => {
+        const taskCard = document.createElement('div');
+        taskCard.className = `p-3 rounded border-l-4 ${getStatusClass(task.status)} bg-white`;
+        
+        taskCard.innerHTML = `
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <h4 class="font-medium">${task.title}</h4>
+                    <p class="text-sm text-gray-600">${task.category}</p>
+                    ${task.description ? `<p class="text-xs text-gray-500 mt-1">${task.description}</p>` : ''}
+                    <div class="mt-2 flex items-center gap-2">
+                        <span class="text-xs px-2 py-1 rounded ${getStatusBadge(task.status)}">
+                            ${getStatusLabel(task.status)}
+                        </span>
+                        ${task.status === 'active' ? `
+                            <button onclick="moveQuarterlyTaskToWeek(${task.id})" class="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">
+                                В неделю
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 ml-2">
+                    ${task.status === 'active' ? `
+                        <button onclick="editQuarterlyTask(${task.id})" class="text-blue-500 hover:text-blue-700">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    ` : ''}
+                    <button onclick="deleteQuarterlyTask(${task.id})" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(taskCard);
+    });
+}
+
+function showAddQuarterlyTaskModal() {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.id = 'quarterly-task-modal';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4">Добавить квартальную задачу</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Категория</label>
+                    <select id="qtask-category" class="w-full p-2 border rounded">
+                        ${appData.categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Задача</label>
+                    <input type="text" id="qtask-title" placeholder="Что нужно сделать в этом квартале?" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Описание</label>
+                    <textarea id="qtask-description" placeholder="Подробности..." class="w-full p-2 border rounded" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="closeModal('quarterly-task-modal')" class="px-4 py-2 border rounded hover:bg-gray-50">
+                    Отмена
+                </button>
+                <button onclick="addQuarterlyTask()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                    Добавить
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function addQuarterlyTask() {
+    const category = document.getElementById('qtask-category').value;
+    const title = document.getElementById('qtask-title').value.trim();
+    const description = document.getElementById('qtask-description').value.trim();
+    
+    if (!title) {
+        alert('⚠️ Введите название задачи!');
+        return;
+    }
+    
+    const quarterKey = `q${appData.currentQuarter}_2025`;
+    
+    if (!appData.quarterlyTasks[quarterKey]) {
+        appData.quarterlyTasks[quarterKey] = [];
+    }
+    
+    const newTask = {
+        id: Date.now(),
+        title: title,
+        description: description,
+        category: category,
+        status: 'active',
+        createdAt: new Date().toISOString()
+    };
+    
+    appData.quarterlyTasks[quarterKey].push(newTask);
+    saveData();
+    
+    closeModal('quarterly-task-modal');
+    renderQuarterlyTasks();
+    
+    console.log('📋 Квартальная задача добавлена:', title);
+}
+
+function moveQuarterlyTaskToWeek(taskId) {
+    const quarterKey = `q${appData.currentQuarter}_2025`;
+    const task = appData.quarterlyTasks[quarterKey]?.find(t => t.id === taskId);
+    
+    if (!task) return;
+    
+    const weekNumber = prompt('В какую неделю перенести? (1-4)', '1');
+    if (!weekNumber || !['1','2','3','4'].includes(weekNumber)) return;
+    
+    // Создаем копию задачи для недельного плана
+    const weeklyTask = {
+        ...task,
+        id: Date.now(), // Новый ID для недельной версии
+        source: 'quarterly',
+        originalId: task.id,
+        movedAt: new Date().toISOString()
+    };
+    
+    // Добавляем в недельный план
+    if (!appData.weeklyPlans[weekNumber]) {
+        appData.weeklyPlans[weekNumber] = [];
+    }
+    
+    appData.weeklyPlans[weekNumber].push(weeklyTask);
+    saveData();
+    
+    console.log(`📅 Квартальная задача "${task.title}" перемещена в неделю ${weekNumber}`);
+    alert(`✅ Задача перемещена в неделю ${weekNumber}`);
+}
+
+// ============================================
+// УТИЛИТЫ ДЛЯ СТАТУСОВ
+// ============================================
+function getStatusClass(status) {
+    switch(status) {
+        case 'completed': return 'border-green-400';
+        case 'transferred': return 'border-yellow-400';
+        case 'cancelled': return 'border-red-400';
+        default: return 'border-blue-400';
+    }
+}
+
+function getStatusBadge(status) {
+    switch(status) {
+        case 'completed': return 'bg-green-100 text-green-800';
+        case 'transferred': return 'bg-yellow-100 text-yellow-800';
+        case 'cancelled': return 'bg-red-100 text-red-800';
+        default: return 'bg-blue-100 text-blue-800';
+    }
+}
+
+function getStatusLabel(status) {
+    switch(status) {
+        case 'completed': return '✅ Выполнено';
+        case 'transferred': return '🔄 Перенесено';
+        case 'cancelled': return '❌ Отменено';
+        default: return '🔵 Активно';
+    }
+}
+
+// ============================================
+// ПЕРЕСМОТР КВАРТАЛА
+// ============================================
+function reviewQuarter() {
+    const quarterKey = `q${appData.currentQuarter}_2025`;
+    const tasks = appData.quarterlyTasks[quarterKey] || [];
+    
+    if (tasks.length === 0) {
+        alert('В этом квартале нет задач для пересмотра');
+        return;
+    }
+    
+    showReviewModal(tasks, quarterKey);
+}
+
+function showReviewModal(tasks, quarterKey) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50';
+    modal.id = 'review-modal';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-4xl w-full max-h-96 overflow-y-auto">
+            <h3 class="text-xl font-bold mb-4">Пересмотр квартала Q${appData.currentQuarter} 2025</h3>
+            <div class="space-y-3">
+                ${tasks.map(task => `
+                    <div class="p-3 border rounded">
+                        <h4 class="font-medium">${task.title}</h4>
+                        <p class="text-sm text-gray-600">${task.category}</p>
+                        <div class="mt-2">
+                            <label class="text-sm font-medium">Статус:</label>
+                            <select id="review-status-${task.id}" class="ml-2 p-1 border rounded">
+                                <option value="completed">✅ Выполнено</option>
+                                <option value="transferred">🔄 Перенести в следующий квартал</option>
+                                <option value="cancelled">❌ Отменить/неактуально</option>
+                            </select>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="closeModal('review-modal')" class="px-4 py-2 border rounded hover:bg-gray-50">
+                    Отмена
+                </button>
+                <button onclick="saveQuarterReview('${quarterKey}')" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Сохранить пересмотр
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function saveQuarterReview(quarterKey) {
+    const tasks = appData.quarterlyTasks[quarterKey] || [];
+    const reviewResults = [];
+    
+    tasks.forEach(task => {
+        const statusSelect = document.getElementById(`review-status-${task.id}`);
+        if (statusSelect) {
+            const newStatus = statusSelect.value;
+            task.status = newStatus;
+            task.reviewedAt = new Date().toISOString();
+            
+            reviewResults.push({
+                taskTitle: task.title,
+                category: task.category,
+                status: newStatus
+            });
+            
+            // Если переносим в следующий квартал
+            if (newStatus === 'transferred') {
+                const nextQuarter = appData.currentQuarter === 4 ? 1 : appData.currentQuarter + 1;
+                const nextQuarterKey = `q${nextQuarter}_2025`;
+                
+                if (!appData.quarterlyTasks[nextQuarterKey]) {
+                    appData.quarterlyTasks[nextQuarterKey] = [];
+                }
+                
+                const transferredTask = {
+                    ...task,
+                    id: Date.now() + Math.random(), // Новый ID
+                    status: 'active',
+                    transferredFrom: quarterKey,
+                    createdAt: new Date().toISOString()
+                };
+                
+                appData.quarterlyTasks[nextQuarterKey].push(transferredTask);
+            }
+        }
+    });
+    
+    // Сохраняем историю пересмотра
+    if (!appData.reviewHistory) appData.reviewHistory = [];
+    appData.reviewHistory.push({
+        quarter: quarterKey,
+        reviewDate: new Date().toISOString(),
+        results: reviewResults
+    });
+    
+    saveData();
+    closeModal('review-modal');
+    renderQuarterlyTasks();
+    renderReviewsHistory();
+    
+    console.log('📊 Пересмотр квартала завершен');
+}
+
+// ============================================
+// ИСТОРИЯ ПЕРЕСМОТРОВ
+// ============================================
+function renderReviewsHistory() {
+    const container = document.getElementById('reviews-history');
+    if (!container) return;
+    
+    if (!appData.reviewHistory || appData.reviewHistory.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">История пересмотров пуста</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    appData.reviewHistory.slice(-5).reverse().forEach(review => {
+        const reviewCard = document.createElement('div');
+        reviewCard.className = 'bg-gray-50 p-3 rounded border';
+        
+        const reviewDate = new Date(review.reviewDate).toLocaleDateString('ru');
+        const completed = review.results.filter(r => r.status === 'completed').length;
+        const transferred = review.results.filter(r => r.status === 'transferred').length;
+        const cancelled = review.results.filter(r => r.status === 'cancelled').length;
+        
+        reviewCard.innerHTML = `
+            <div class="flex items-center justify-between">
+                <h4 class="font-medium">${review.quarter.toUpperCase()} - ${reviewDate}</h4>
+                <div class="text-sm text-gray-600">
+                    <span class="text-green-600">✅ ${completed}</span>
+                    <span class="text-yellow-600 ml-2">🔄 ${transferred}</span>
+                    <span class="text-red-600 ml-2">❌ ${cancelled}</span>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(reviewCard);
+    });
+}
+
+// ============================================
+// УПРАВЛЕНИЕ МОДАЛЬНЫМИ ОКНАМИ
+// ============================================
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+}
+
+// ============================================
+// ЗАГРУЗКА КВАРТАЛА
+// ============================================
+function loadQuarter() {
+    const quarterSelect = document.getElementById('quarter-selector');
+    if (quarterSelect) {
+        appData.currentQuarter = parseInt(quarterSelect.value);
+        saveData();
+        renderQuarterlyTasks();
+    }
+}
+
+// Добавляем функции для редактирования и удаления квартальных задач
+function editQuarterlyTask(taskId) {
+    const quarterKey = `q${appData.currentQuarter}_2025`;
+    const task = appData.quarterlyTasks[quarterKey]?.find(t => t.id === taskId);
+    
+    if (!task) return;
+    
+    const newTitle = prompt('Изменить задачу:', task.title);
+    if (newTitle && newTitle.trim()) {
+        task.title = newTitle.trim();
+        saveData();
+        renderQuarterlyTasks();
+    }
+}
+
+function deleteQuarterlyTask(taskId) {
+    if (!confirm('Удалить квартальную задачу?')) return;
+    
+    const quarterKey = `q${appData.currentQuarter}_2025`;
+    if (appData.quarterlyTasks[quarterKey]) {
+        appData.quarterlyTasks[quarterKey] = appData.quarterlyTasks[quarterKey].filter(t => t.id !== taskId);
+        saveData();
+        renderQuarterlyTasks();
+    }
 }
 
 function renderWeeklyView() {
