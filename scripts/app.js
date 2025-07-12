@@ -366,8 +366,269 @@ function renderDailyView() {
     console.log('⏰ Дневное планирование (в разработке)');
 }
 
+// ============================================
+// НАСТРОЙКИ - УПРАВЛЕНИЕ КАТЕГОРИЯМИ
+// ============================================
 function renderSettingsView() {
-    console.log('⚙️ Настройки (в разработке)');
+    const settingsView = document.getElementById('settings-view');
+    if (!settingsView) return;
+    
+    settingsView.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Управление категориями -->
+            <div class="bg-white rounded-lg p-6 shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">
+                    <i class="fas fa-tags"></i> Управление категориями
+                </h2>
+                
+                <!-- Добавление новой категории -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="font-medium mb-3">Добавить категорию</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-category-name" placeholder="Название категории" 
+                               class="flex-1 p-2 border rounded">
+                        <button onclick="addCategory()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            <i class="fas fa-plus"></i> Добавить
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Список существующих категорий -->
+                <div>
+                    <h3 class="font-medium mb-3">Существующие категории</h3>
+                    <div id="categories-list" class="space-y-2">
+                        <!-- Категории будут загружены сюда -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Экспорт данных -->
+            <div class="bg-white rounded-lg p-6 shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-blue-700">
+                    <i class="fas fa-download"></i> Экспорт данных
+                </h2>
+                
+                <div class="space-y-4">
+                    <button onclick="exportToJSON()" class="w-full bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700">
+                        <i class="fas fa-file-code"></i> Экспорт в JSON
+                    </button>
+                    
+                    <button onclick="exportToPDF()" class="w-full bg-red-600 text-white px-4 py-3 rounded hover:bg-red-700">
+                        <i class="fas fa-file-pdf"></i> Экспорт в PDF (скоро)
+                    </button>
+                    
+                    <div class="mt-4 p-4 bg-yellow-50 rounded border border-yellow-200">
+                        <h4 class="font-medium text-yellow-800 mb-2">📊 Статистика</h4>
+                        <div class="text-sm text-yellow-700">
+                            <p>Всего категорий: <span class="font-bold">${appData.categories.length}</span></p>
+                            <p>Задач в хаосе: <span class="font-bold">${appData.chaosTasks.length}</span></p>
+                            <p>Завершенных задач: <span class="font-bold">${appData.chaosTasks.filter(t => t.completed).length}</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Импорт данных -->
+        <div class="mt-6 bg-white rounded-lg p-6 shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-purple-700">
+                <i class="fas fa-upload"></i> Импорт данных
+            </h2>
+            <div class="flex items-center gap-4">
+                <input type="file" id="import-file" accept=".json" class="hidden">
+                <button onclick="document.getElementById('import-file').click()" 
+                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                    <i class="fas fa-file-upload"></i> Выбрать файл JSON
+                </button>
+                <button onclick="importFromJSON()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                    <i class="fas fa-upload"></i> Импортировать
+                </button>
+                <span class="text-sm text-gray-600">Загрузите ранее экспортированные данные</span>
+            </div>
+        </div>
+    `;
+    
+    renderCategoriesList();
+}
+
+function renderCategoriesList() {
+    const container = document.getElementById('categories-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    appData.categories.forEach((category, index) => {
+        const categoryItem = document.createElement('div');
+        categoryItem.className = 'flex items-center justify-between p-3 bg-gray-50 rounded border';
+        
+        // Подсчитываем количество задач в этой категории
+        const tasksCount = appData.chaosTasks.filter(task => task.category === category).length;
+        
+        categoryItem.innerHTML = `
+            <div class="flex items-center gap-3">
+                <span class="w-4 h-4 bg-blue-500 rounded"></span>
+                <span class="font-medium">${category}</span>
+                <span class="text-sm text-gray-500">(${tasksCount} задач)</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="editCategory(${index})" class="text-blue-500 hover:text-blue-700">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="deleteCategory(${index})" class="text-red-500 hover:text-red-700 ${tasksCount > 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(categoryItem);
+    });
+}
+
+function addCategory() {
+    const nameInput = document.getElementById('new-category-name');
+    const name = nameInput.value.trim();
+    
+    if (!name) {
+        alert('⚠️ Введите название категории!');
+        return;
+    }
+    
+    if (appData.categories.includes(name)) {
+        alert('⚠️ Такая категория уже существует!');
+        return;
+    }
+    
+    appData.categories.push(name);
+    saveData();
+    
+    nameInput.value = '';
+    renderCategoriesList();
+    initializeCategories(); // Обновляем все селекты в приложении
+    
+    console.log('✅ Категория добавлена:', name);
+}
+
+function editCategory(index) {
+    const currentName = appData.categories[index];
+    const newName = prompt('Изменить название категории:', currentName);
+    
+    if (!newName || !newName.trim()) return;
+    
+    const trimmedName = newName.trim();
+    
+    if (appData.categories.includes(trimmedName) && trimmedName !== currentName) {
+        alert('⚠️ Такая категория уже существует!');
+        return;
+    }
+    
+    // Обновляем категорию во всех задачах
+    appData.chaosTasks.forEach(task => {
+        if (task.category === currentName) {
+            task.category = trimmedName;
+        }
+    });
+    
+    // Обновляем в списке категорий
+    appData.categories[index] = trimmedName;
+    
+    saveData();
+    renderCategoriesList();
+    initializeCategories();
+    renderChaosView(); // Обновляем отображение задач
+    
+    console.log('✅ Категория изменена:', currentName, '→', trimmedName);
+}
+
+function deleteCategory(index) {
+    const category = appData.categories[index];
+    const tasksCount = appData.chaosTasks.filter(task => task.category === category).length;
+    
+    if (tasksCount > 0) {
+        alert(`⚠️ Нельзя удалить категорию "${category}" - в ней есть ${tasksCount} задач!`);
+        return;
+    }
+    
+    if (!confirm(`Удалить категорию "${category}"?`)) return;
+    
+    appData.categories.splice(index, 1);
+    saveData();
+    
+    renderCategoriesList();
+    initializeCategories();
+    
+    console.log('✅ Категория удалена:', category);
+}
+
+// ============================================
+// ЭКСПОРТ И ИМПОРТ ДАННЫХ
+// ============================================
+function exportToJSON() {
+    const dataToExport = {
+        ...appData,
+        exportDate: new Date().toISOString(),
+        version: '1.0'
+    };
+    
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+        type: 'application/json'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chaos-to-order-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('📁 Данные экспортированы в JSON');
+}
+
+function exportToPDF() {
+    alert('📄 Экспорт в PDF будет добавлен в следующей версии!');
+}
+
+function importFromJSON() {
+    const fileInput = document.getElementById('import-file');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('⚠️ Выберите файл для импорта!');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            
+            if (!confirm('⚠️ Импорт заменит все текущие данные. Продолжить?')) {
+                return;
+            }
+            
+            // Проверяем базовую структуру
+            if (importedData.categories && Array.isArray(importedData.categories)) {
+                appData = { ...appData, ...importedData };
+                saveData();
+                
+                // Обновляем интерфейс
+                initializeCategories();
+                renderSettingsView();
+                renderChaosView();
+                
+                alert('✅ Данные успешно импортированы!');
+                console.log('📥 Данные импортированы');
+            } else {
+                alert('❌ Неверный формат файла!');
+            }
+        } catch (error) {
+            alert('❌ Ошибка чтения файла!');
+            console.error('Ошибка импорта:', error);
+        }
+    };
+    
+    reader.readAsText(file);
 }
 
 function addYearlyGoal() {
