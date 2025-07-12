@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaos to Order - Планировщик задач</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .chaos-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .order-gradient { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .week-gradient { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .day-gradient { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        
+        .priority-urgent { @apply bg-red-200 border-red-400 text-red-900; }
+        .priority-high { @apply bg-orange-200 border-orange-400 text-orange-900; }
+        .priority-medium { @apply bg-yellow-200 border-yellow-400 text-yellow-900; }
+        .priority-low { @apply bg-green-200 border-green-400 text-green-900; }
+        
+        .status-completed { @apply bg-green-100 border-green-300; }
+        .status-transferred { @apply bg-yellow-100 border-yellow-300; }
+        .status-cancelled { @apply bg-red-100 border-red-300; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="max-w-7xl mx-auto p-4">
+        <!-- Заголовок -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-tornado text-purple-600"></i> Chaos to Order
+            </h1>
+            <p class="text-gray-600">Превращаем хаос в систему. Стратегия → Операционка → План</p>
+        </header>
+
+        <!-- Навигация -->
+        <nav class="mb-6">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="showView('strategic')" id="nav-strategic" class="nav-btn order-gradient">
+                    <i class="fas fa-bullseye"></i> Стратегическое планирование
+                </button>
+                <button onclick="showView('chaos')" id="nav-chaos" class="nav-btn chaos-gradient">
+                    <i class="fas fa-bolt"></i> Хаос-зона
+                </button>
+                <button onclick="showView('weekly')" id="nav-weekly" class="nav-btn week-gradient">
+                    <i class="fas fa-calendar-week"></i> Недельный план
+                </button>
+                <button onclick="showView('daily')" id="nav-daily" class="nav-btn day-gradient">
+                    <i class="fas fa-clock"></i> Дневной план
+                </button>
+                <button onclick="showView('settings')" id="nav-settings" class="nav-btn bg-gray-500">
+                    <i class="fas fa-cog"></i> Настройки
+                </button>
+            </div>
+        </nav>
+
+        <!-- Виды приложения -->
+        <main>
+            <!-- Стратегическое планирование -->
+            <div id="strategic-view" class="view-container hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg p-6 shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4 text-purple-700">
+                            <i class="fas fa-calendar-alt"></i> Годовое планирование
+                        </h2>
+                        <div id="yearly-goals"></div>
+                        <button onclick="addYearlyGoal()" class="mt-4 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                            <i class="fas fa-plus"></i> Добавить цель
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg p-6 shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4 text-blue-700">
+                            <i class="fas fa-tasks"></i> Квартальное планирование
+                        </h2>
+                        <div class="mb-4">
+                            <select id="quarter-selector" onchange="loadQuarter()" class="p-2 border rounded">
+                                <option value="1">Q1 2025</option>
+                                <option value="2">Q2 2025</option>
+                                <option value="3">Q3 2025</option>
+                                <option value="4">Q4 2025</option>
+                            </select>
+                            <button onclick="reviewQuarter()" class="ml-2 bg-blue-600 text-white px-4 py-2 rounded">
+                                <i class="fas fa-clipboard-check"></i> Пересмотр
+                            </button>
+                        </div>
+                        <div id="quarterly-tasks"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Хаос-зона -->
+            <div id="chaos-view" class="view-container">
+                <div class="bg-white rounded-lg p-6 shadow-lg mb-6">
+                    <h2 class="text-2xl font-bold mb-4 text-red-700">
+                        <i class="fas fa-bolt"></i> Быстрое добавление задач
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <input type="text" id="new-task-title" placeholder="Что нужно сделать?" class="p-3 border rounded-lg">
+                        <select id="new-task-category" class="p-3 border rounded-lg">
+                            <option value="">Выберите категорию</option>
+                        </select>
+                        <select id="new-task-priority" class="p-3 border rounded-lg">
+                            <option value="urgent">🔥 Срочно</option>
+                            <option value="high">⚡ Высокий</option>
+                            <option value="medium" selected>📋 Средний</option>
+                            <option value="low">💤 Низкий</option>
+                        </select>
+                        <button onclick="addChaosTask()" class="bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700">
+                            <i class="fas fa-plus"></i> Добавить
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Фильтры -->
+                <div class="bg-white rounded-lg p-4 shadow-lg mb-6">
+                    <h3 class="font-bold mb-3"><i class="fas fa-filter"></i> Умные фильтры</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filterChaos('all')" class="filter-btn bg-gray-500">Все</button>
+                        <button onclick="filterChaos('urgent')" class="filter-btn bg-red-500">Срочные</button>
+                        <button onclick="filterChaos('quick')" class="filter-btn bg-green-500">Быстрые (5 мин)</button>
+                    </div>
+                </div>
+
+                <!-- Список задач хаоса -->
+                <div id="chaos-tasks" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                </div>
+            </div>
+
+            <!-- Остальные виды добавим позже -->
+            <div id="weekly-view" class="view-container hidden">
+                <h2 class="text-2xl font-bold mb-4">Недельное планирование</h2>
+                <p>Будет добавлено...</p>
+            </div>
+
+            <div id="daily-view" class="view-container hidden">
+                <h2 class="text-2xl font-bold mb-4">Дневное планирование</h2>
+                <p>Будет добавлено...</p>
+            </div>
+
+            <div id="settings-view" class="view-container hidden">
+                <h2 class="text-2xl font-bold mb-4">Настройки</h2>
+                <p>Будет добавлено...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="scripts/app.js"></script>
+</body>
+</html>
