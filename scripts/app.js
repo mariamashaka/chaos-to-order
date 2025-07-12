@@ -1238,10 +1238,6 @@ function importFromJSON() {
     reader.readAsText(file);
 }
 
-function addYearlyGoal() {
-    console.log('🎯 Добавление годовой цели (в разработке)');
-}
-
 function loadQuarter() {
     console.log('📈 Загрузка квартала (в разработке)');
 }
