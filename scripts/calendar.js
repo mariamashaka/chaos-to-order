@@ -118,3 +118,99 @@ function openEventModal(date) {
 
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', initCalendar);
+
+// Работа с событиями
+function openEventModal(date) {
+    const modal = document.getElementById('event-modal');
+    if (!modal) {
+        console.log('Модальное окно не найдено!');
+        return;
+    }
+    
+    console.log('Открываем модальное окно для даты:', date);
+    
+    // Заполняем форму
+    const dateStr = formatDate(date);
+    document.getElementById('event-title').value = '';
+    document.getElementById('event-description').value = '';
+    document.getElementById('event-time').value = '';
+    
+    // Заполняем категории из настроек
+    loadCategoriesToEventForm();
+    
+    // Сохраняем выбранную дату
+    modal.dataset.selectedDate = dateStr;
+    
+    // Показываем модальное окно
+    modal.classList.remove('hidden');
+}
+
+function loadCategoriesToEventForm() {
+    const categorySelect = document.getElementById('event-category');
+    if (!categorySelect) return;
+    
+    const categories = JSON.parse(localStorage.getItem('categories') || '["Работа", "Здоровье", "Семья", "Личное"]');
+    
+    categorySelect.innerHTML = '';
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categorySelect.appendChild(option);
+    });
+}
+
+function closeEventModal() {
+    const modal = document.getElementById('event-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function saveEvent() {
+    const modal = document.getElementById('event-modal');
+    const selectedDate = modal.dataset.selectedDate;
+    
+    const eventData = {
+        title: document.getElementById('event-title').value,
+        category: document.getElementById('event-category').value,
+        time: document.getElementById('event-time').value,
+        description: document.getElementById('event-description').value,
+        date: selectedDate
+    };
+    
+    if (!eventData.title) {
+        alert('Введите название события');
+        return;
+    }
+    
+    // Сохраняем событие
+    if (!events[selectedDate]) {
+        events[selectedDate] = [];
+    }
+    events[selectedDate].push(eventData);
+    
+    // Сохраняем в localStorage
+    localStorage.setItem('events', JSON.stringify(events));
+    
+    // Закрываем модальное окно и обновляем календарь
+    closeEventModal();
+    updateCalendarDisplay();
+}
+
+// Обработчики событий для модального окна
+document.addEventListener('DOMContentLoaded', function() {
+    const cancelBtn = document.getElementById('cancel-event');
+    const eventForm = document.getElementById('event-form');
+    
+    if (cancelBtn) {
+        cancelBtn.onclick = closeEventModal;
+    }
+    
+    if (eventForm) {
+        eventForm.onsubmit = function(e) {
+            e.preventDefault();
+            saveEvent();
+        };
+    }
+});
