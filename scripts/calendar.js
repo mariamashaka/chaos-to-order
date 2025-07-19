@@ -54,14 +54,28 @@ function createDayElement(date, currentMonth) {
     const dayDiv = document.createElement('div');
     const isCurrentMonth = date.getMonth() === currentMonth;
     const isToday = isDateToday(date);
+    const dateStr = formatDate(date);
     
     dayDiv.className = `min-h-24 p-2 border border-gray-200 cursor-pointer hover:bg-gray-50 ${
         !isCurrentMonth ? 'text-gray-400 bg-gray-50' : ''
     } ${isToday ? 'bg-blue-100 border-blue-300' : ''}`;
     
+    // Создаем содержимое дня
+    let eventsHtml = '';
+    if (events[dateStr]) {
+        events[dateStr].forEach(event => {
+            const timeStr = event.time ? `${event.time} ` : '';
+            eventsHtml += `
+                <div class="text-xs bg-blue-500 text-white px-1 py-0.5 rounded mb-1 truncate">
+                    ${timeStr}${event.title}
+                </div>
+            `;
+        });
+    }
+    
     dayDiv.innerHTML = `
         <div class="font-bold text-sm">${date.getDate()}</div>
-        <div class="text-xs space-y-1" id="events-${formatDate(date)}"></div>
+        <div class="events-container">${eventsHtml}</div>
     `;
     
     dayDiv.onclick = () => openEventModal(date);
